@@ -4,14 +4,15 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import LoginRequest,TokenResponse
-from app.auth.security import verify_password,create_access_token
+from app.auth.security import verify_password,create_access_token,get_current_user
+from fastapi.security import OAuth2PasswordRequestForm
 
 router=APIRouter(prefix="/auth",tags=["auth"])
 
 @router.post("/login",response_model=TokenResponse)
-def login(data:LoginRequest,db:Session=Depends(get_db)):
+def login(data:OAuth2PasswordRequestForm=Depends(),db:Session=Depends(get_db)):
 
-    user=db.query(User).filter(User.email==data.email).first()
+    user=db.query(User).filter(User.email==data.username).first()
 
     if not user:
         raise HTTPException(
@@ -35,3 +36,10 @@ def login(data:LoginRequest,db:Session=Depends(get_db)):
 
     return {"access_token":token}
 
+@router.get("/me")
+def read_me(current_user:User=Depends(get_current_user)):
+    return{
+        "id":current_user.id,
+        "email":current_user.email,
+        "role":current_user.role   
+    }
