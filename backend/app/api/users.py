@@ -1,0 +1,33 @@
+from fastapi import APIRouter,Depends,HTTPException
+from sqlalchemy.orm import Session
+from app.db.session import get_db
+from app.models.user import User
+from app.schemas.user import UserCreate,UserResponse
+from app.auth.security import hash_password
+
+
+router=APIRouter(prefix="/users",tags=["users"])
+
+@router.post("/",response_model=UserResponse)
+def create_user(user:UserCreate,db:Session=Depends(get_db)):
+    existing=db.query(User).filter(User.email==user.email).first()
+
+    if existing:
+        raise HTTPException(status_code=400,detail="Email already registered")
+    
+
+    print("DEBUG password value:", user.password)
+    print("DEBUG password type:", type(user.password))
+    print("DEBUG password length:", len(user.password.encode()))
+
+    new_user=User(
+        email=user.email,
+        role=user.role,
+        hashed_password=hash_password(user.password)
+                )
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
