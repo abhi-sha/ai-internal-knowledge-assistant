@@ -52,3 +52,83 @@ What is NOT done yet:
 Goal:
 Continue step-by-step like a senior engineer onboarding a new joiner.
 Next task should be: Login API + JWT (from first principles, slow and clear). -->
+
+
+<!-- NEW -->
+Project: AI Internal Knowledge Assistant (Enterprise Internal Tool)
+
+Tech Stack:
+- Backend: FastAPI
+- ORM: SQLAlchemy
+- DB: SQLite (local dev)
+- Auth: JWT (OAuth2PasswordBearer)
+- Password hashing: passlib[bcrypt]
+
+Current Backend State (COMPLETED):
+
+Infrastructure
+- Project structure: app/, api/, models/, db/, auth/, schemas/
+- FastAPI app boots successfully
+- /health endpoint works
+- SQLAlchemy engine, SessionLocal, get_db dependency configured
+- SQLite app.db created and verified via sqlite CLI
+- Circular import issue fixed by:
+  - Keeping Base clean (no model imports)
+  - Importing models in main.py before Base.metadata.create_all()
+
+User Management
+- User SQLAlchemy model created:
+  - id (UUID)
+  - email
+  - role
+  - hashed_password
+- User creation API:
+  - POST /users
+  - Password hashing implemented
+  - Users stored correctly in DB
+
+Authentication (NEW – COMPLETED)
+- Login API implemented:
+  - POST /auth/login
+  - Accepts OAuth2PasswordRequestForm { username, password }
+  - Verifies password
+  - Generates JWT access token
+- JWT setup:
+  - HS256
+  - SECRET_KEY
+  - Expiry configured
+- Token creation centralized in app/auth/security.py
+
+Authorization / Protected Routes (NEW – COMPLETED)
+- OAuth2PasswordBearer configured (tokenUrl="/auth/login") for docs + token extraction
+- get_current_user dependency implemented:
+  - Extracts token from Authorization header
+  - Verifies JWT signature + expiry
+  - Loads user from DB
+- Protected endpoint added:
+  - GET /auth/me
+  - Returns current user info
+- Swagger testing verified:
+  - Login via /auth/login
+  - Manual Authorize with Bearer token
+  - /auth/me works correctly
+
+What is NOT done yet:
+- Role-based access control (admin/user)
+- Refresh tokens
+- Logout semantics
+- Frontend integration
+- AI / RAG functionality (embeddings, vector DB, retrieval, chat)
+
+Current Position:
+- Authentication & basic authorization layer is complete and production-grade
+- Backend is ready to securely support AI / document APIs
+
+Next Logical Steps (choose one):
+1. Role-based access control (RBAC)
+2. Token refresh strategy
+3. Start AI/RAG backend (document ingestion, embeddings, retrieval)
+4. Frontend auth flow (how UI uses JWT)
+
+Instruction:
+Continue step-by-step like a senior engineer onboarding a new joiner.
