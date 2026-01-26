@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.core.config import PROJECT_NAME
+from app.core.config import PROJECT_NAME,STORAGE_DIR,DOCUMENTS_DIR
 # from app.core.config import DATABASE_URL
 from app.api.health import router as router_health
 from app.api.users import router as users_router
@@ -9,6 +9,8 @@ from app.db.base import Base
 from app.api.documents import router as document_router
 import app.models
 
+STORAGE_DIR.mkdir(exist_ok=True)
+DOCUMENTS_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title=PROJECT_NAME)
 

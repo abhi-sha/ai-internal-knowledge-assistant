@@ -1,4 +1,4 @@
-# AI Internal Knowledge Assistant – Progress Log
+<!-- # AI Internal Knowledge Assistant – Progress Log
 
 ## Completed
 - Backend project structure
@@ -20,7 +20,7 @@
 - Role-based access
 - Cost tracking
 - Feedback loop
-
+ -->
 
 <!-- “I’m building an internal AI knowledge assistant.
 Backend is done till user creation + hashing.
@@ -55,7 +55,7 @@ Next task should be: Login API + JWT (from first principles, slow and clear). --
 
 
 <!-- NEW -->
-Project: AI Internal Knowledge Assistant (Enterprise Internal Tool)
+<!-- Project: AI Internal Knowledge Assistant (Enterprise Internal Tool)
 
 Tech Stack:
 - Backend: FastAPI
@@ -129,6 +129,145 @@ Next Logical Steps (choose one):
 2. Token refresh strategy
 3. Start AI/RAG backend (document ingestion, embeddings, retrieval)
 4. Frontend auth flow (how UI uses JWT)
+
+Instruction:
+Continue step-by-step like a senior engineer onboarding a new joiner. -->
+
+
+Project: AI Internal Knowledge Assistant (Enterprise Internal Tool)
+
+Tech Stack:
+- Backend: FastAPI
+- ORM: SQLAlchemy
+- Database: SQLite (local dev)
+- Authentication: JWT (OAuth2PasswordBearer)
+- Password hashing: passlib[argon2]
+
+────────────────────────────────
+CURRENT BACKEND STATE (COMPLETED)
+────────────────────────────────
+
+Infrastructure
+- Clean project structure:
+  app/
+    api/
+    models/
+    schemas/
+    auth/
+    db/
+    core/
+- FastAPI app boots successfully
+- /health endpoint works
+- SQLAlchemy engine, SessionLocal, get_db dependency configured
+- SQLite app.db created and verified via sqlite CLI
+- Circular import issue fixed by:
+  - Keeping Base clean (no model imports)
+  - Importing models in main.py before Base.metadata.create_all()
+
+User Management
+- User SQLAlchemy model:
+  - id (UUID, PK)
+  - email (unique)
+  - role (admin/user)
+  - hashed_password
+- User creation API:
+  - POST /users
+  - Password hashing implemented via passlib[bcrypt]
+  - Users stored correctly in DB
+
+Authentication (COMPLETED)
+- Login API:
+  - POST /auth/login
+  - Accepts OAuth2PasswordRequestForm (username=email, password)
+  - Verifies password
+  - Issues JWT access token
+- JWT configuration:
+  - HS256
+  - SECRET_KEY
+  - Expiry configured
+- Token creation centralized in app/auth/security.py
+
+Authorization & Protected Routes (COMPLETED)
+- OAuth2PasswordBearer configured (tokenUrl="/auth/login")
+- get_current_user dependency:
+  - Extracts token from Authorization header
+  - Verifies JWT signature & expiry
+  - Loads user from DB
+- Protected endpoint:
+  - GET /auth/me
+- Swagger testing verified:
+  - Login → receive token
+  - Manual Authorize with Bearer token
+  - /auth/me works
+
+Role-Based Access Control (RBAC) (COMPLETED)
+- Roles supported:
+  - admin
+  - user
+- require_role(*roles) dependency implemented
+- Clean RBAC enforcement via dependencies
+- Correct HTTP behavior:
+  - 401 → unauthenticated
+  - 403 → insufficient permissions
+
+Document Management APIs (RBAC-PROTECTED) (COMPLETED)
+- Document SQLAlchemy model:
+  - id (UUID)
+  - filename
+  - content_type
+  - uploaded_by (FK → users.id)
+  - created_at
+- APIs:
+  - POST /documents
+    - Role: user, admin
+    - Upload document metadata
+  - GET /documents
+    - Role: authenticated users
+    - List documents
+  - DELETE /documents/{document_id}
+    - Role: admin only
+- UUID validation enforced at API level
+- Auth + RBAC integrated via dependencies
+
+────────────────────────────────
+WHAT IS NOT DONE YET
+────────────────────────────────
+
+Backend (Still Pending)
+- Actual file storage (disk / S3 / etc.)
+- Background processing for documents
+- Document parsing & chunking
+- Embedding generation
+- Vector database integration
+- Retrieval pipeline (RAG)
+- Chat endpoint (/chat)
+- Organization / multi-tenant model (optional but enterprise-relevant)
+- Token refresh strategy (optional)
+- Logout semantics (optional)
+
+Frontend (Not Started)
+- Login UI
+- Token storage & API interceptor
+- Chat UI
+- Document upload UI
+
+────────────────────────────────
+CURRENT POSITION
+────────────────────────────────
+- Backend authentication, authorization, RBAC, and core document APIs are complete
+- Backend is now stable and secure
+- System is ready to move into AI/RAG functionality
+- No frontend dependency at this stage
+
+────────────────────────────────
+RECOMMENDED NEXT BACKEND STEPS (ORDER)
+────────────────────────────────
+1. File storage + background processing
+2. Document parsing & chunking
+3. Embeddings + vector database
+4. RAG retrieval pipeline
+5. Chat API
+6. Frontend integration (last)
 
 Instruction:
 Continue step-by-step like a senior engineer onboarding a new joiner.

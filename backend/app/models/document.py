@@ -11,6 +11,10 @@ class Document(Base):
     id=Column(UUID(as_uuid=True),primary_key=True,default=uuid.uuid4)
     filename=Column(String,nullable=False)
     content_type=Column(String,nullable=False)
+    
+    file_path=Column(String,nullable=False)
+    status=Column(String,nullable=False,default="uploaded")
+    error_message=Column(String,nullable=True)
 
     uploaded_by=Column(UUID(as_uuid=True),ForeignKey("users.id"),nullable=False)
 
