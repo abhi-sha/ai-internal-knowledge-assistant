@@ -13,6 +13,11 @@ import uuid
 
 from time import sleep
 from app.db.session import SessionLocal
+from app.services.document_parser import parse_document
+from app.services.text_chunker import chunk_text
+from app.models.document_chunk import DocumentChunk
+from app.services.embedding_service import generate_embeddings
+from app.services.vector_store import FaissVectorStore
 
 router=APIRouter(prefix="/documents",tags=["documents"])
 
@@ -25,15 +30,49 @@ def process_document_background(document_id:UUID):
 
         if not document:
             return
-        
+
+        # 1. mark processing
         document.status="processing"
         db.commit()
 
-        sleep(2)    #heavy task here
+        # 2.Extract text from doc 
+        extracted_text=parse_document(document.file_path)
 
+        if not extracted_text.strip():
+            raise ValueError("Parsed document is empty")
+        
+        # 3. Chunk text
+        chunks=chunk_text(extracted_text)
+
+        embeddings= generate_embeddings(chunks)
+
+        if len(chunks)!=len(embeddings):
+            raise ValueError("Embedding generation failed")
+        
+        for idx,chunk in enumerate(chunks):
+            db.add(
+                DocumentChunk(
+                    document_id=document.id,
+                    content=chunk,
+                    chunk_index=idx
+                )
+            )
+        db.commit()
+        # sleep(2)    #heavy task here
+
+        # Store embeddings in FAISS
+        vector_store=FaissVectorStore()
+        metadata=[]
+        for i in range(len(chunks)):
+            metadata.append({"document_id": str(document.id),"chunk_index": i})
+
+        vector_store.add_vectors(embeddings,metadata)
+        
+        # Mark Completed
         document.status="completed"
         db.commit()
     except Exception as e:
+        print("Background processing error:", e)
         document.status="failed"
         document.error_message=str(e)
         db.commit()
@@ -79,9 +118,27 @@ def list_documents(
     user:User=Depends(get_current_user),
     db:Session=Depends(get_db),
 ):
-    return db.query(Document).all()
+    return (
+        db.query(Document).order_by(Document.created_at.desc())
+        .all()
+    )
 
+@router.get("/{document_id}",response_model=DocumentOut)
+def get_document(
+    document_id:UUID,
+    user:User=Depends(get_current_user),
+    db:Session=Depends(get_db),
+):
+    doc=db.query(Document).filter(Document.id==document_id).first()
 
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+    
+    return doc
+    
 @router.delete("/{document_id}",status_code=204)
 def delete_document(
     document_id:UUID,
@@ -93,6 +150,16 @@ def delete_document(
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Document not found")
     
+    try:
+        file_path=Path(doc.file_path)
+        if file_path.exists():
+            file_path.unlink()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete file from disk"
+        )
+        
     db.delete(doc)
     db.commit()
 

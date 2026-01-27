@@ -9,7 +9,8 @@ class DocumentOut(BaseModel):
     content_type:str
     uploaded_by:UUID
     created_at:datetime
-
+    status:str
+    error_message:str|None
     model_config={
         "from_attributes":True
     } 

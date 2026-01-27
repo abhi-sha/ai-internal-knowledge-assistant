@@ -8,3 +8,5 @@ python-jose
 pydantic[email]
 passlib[argon2]
 python-multipart
+sentence-transformers
+faiss-cpu
