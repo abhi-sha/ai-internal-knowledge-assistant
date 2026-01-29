@@ -32,14 +32,18 @@ class FaissVectorStore:
 
     def search(self,query_vector:List[float],top_k=5):
         
-        distances,indices=self.index.search([query_vector],top_k)
+        query_vector=np.array(query_vector).astype("float32")
 
-        results=[]
+        query_vector = query_vector.reshape(1, -1)
 
-        for idx in indices[0]:
-            if idx==-1:
+        scores, indices = self.index.search(query_vector, top_k)
+
+        results = []
+
+        for rank, idx in enumerate(indices[0]):
+            if idx == -1:
                 continue
-            results.append(self.metadata[idx])
+        results.append((self.metadata[idx], scores[0][rank]))
         
         return results
     

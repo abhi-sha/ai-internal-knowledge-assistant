@@ -15,3 +15,6 @@ DOCUMENTS_DIR = STORAGE_DIR / "documents"
 VECTOR_DIMENSION = 384  # all-MiniLM-L6-v2
 VECTOR_STORE_PATH = "storage/vector_store/index.faiss"
 METADATA_PATH = "storage/vector_store/metadata.pkl"
+GROQ_API_KEY=os.getenv("GROQ_API_KEY")
+
+

@@ -768,6 +768,6 @@ If context is lost, paste this document and say:
 
 “We have completed Phase 3 (FAISS).
 Proceed to Phase 4: Step 10 – retrieval pipeline.
-Continue as senior engineer onboarding.”
+Continue step-by-step like a senior engineer onboarding a new joiner.”
 
 ────────────────────────────────
