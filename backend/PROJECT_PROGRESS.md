@@ -497,7 +497,7 @@ Continue as senior engineer onboarding.”
 
 
 
-Project: AI Internal Knowledge Assistant (Enterprise Internal Tool)
+<!-- Project: AI Internal Knowledge Assistant (Enterprise Internal Tool)
 
 Tech Stack:
 - Backend: FastAPI
@@ -770,4 +770,292 @@ If context is lost, paste this document and say:
 Proceed to Phase 4: Step 10 – retrieval pipeline.
 Continue step-by-step like a senior engineer onboarding a new joiner.”
 
+──────────────────────────────── -->
+
+
+Project: AI Internal Knowledge Assistant (Enterprise Internal Tool)
+
+Tech Stack:
+- Backend: FastAPI
+- ORM: SQLAlchemy
+- Database: SQLite (local dev)
+- Authentication: JWT (OAuth2PasswordBearer)
+- Password hashing: passlib[argon2]
+- Background processing: Celery + Redis
+- Embeddings: SentenceTransformers (all-MiniLM-L6-v2, local & free)
+- Vector Database: FAISS (local)
+- LLM: OpenAI (swappable, abstraction in place)
+
 ────────────────────────────────
+CURRENT BACKEND STATE (COMPLETED)
+────────────────────────────────
+
+Infrastructure
+- Clean, production-oriented project structure:
+  app/
+    api/
+    auth/
+    core/
+    db/
+    middleware/
+    models/
+    schemas/
+    services/
+    tasks/
+  storage/
+    documents/
+    vector_store/
+- FastAPI app boots successfully
+- /health endpoint works
+- SQLAlchemy engine, SessionLocal, get_db dependency configured
+- SQLite app.db created and verified via sqlite CLI
+- Circular import issue resolved by:
+  - Keeping Base clean (no model imports)
+  - Importing models in main.py before Base.metadata.create_all()
+- Storage directories auto-created at startup
+- Vector store persisted on disk (FAISS index + metadata)
+
+────────────────────────────────
+OBSERVABILITY & LOGGING (COMPLETED – PROD GRADE)
+────────────────────────────────
+
+- Structured JSON logging implemented
+- Central logging configuration via app/core/logging.py
+- Request ID middleware added
+  - request_id propagated via headers (X-Request-ID)
+- Context-aware logger adapter implemented
+- Logs enriched with:
+  - request_id
+  - user_id
+  - role
+- RAG-specific logs added:
+  - retrieval start/end
+  - retrieved document_ids
+  - number of chunks
+- Chat-level logs:
+  - query length
+  - context size
+- Errors logged safely without leaking PII
+- Logging compatible with Docker / centralized log systems
+
+────────────────────────────────
+AUTHENTICATION & AUTHORIZATION (COMPLETED)
+────────────────────────────────
+
+User Management
+- User SQLAlchemy model:
+  - id (UUID, PK)
+  - email (unique)
+  - role (admin/user)
+  - hashed_password
+- User creation API:
+  - POST /users
+  - Password hashing via passlib[argon2]
+  - Users persisted correctly
+
+Authentication
+- Login API:
+  - POST /auth/login
+  - OAuth2PasswordRequestForm (username=email)
+  - JWT issued on successful login
+- JWT configuration:
+  - HS256
+  - SECRET_KEY
+  - Expiry configured
+- Token creation centralized in app/auth/security.py
+
+Authorization & Protected Routes
+- OAuth2PasswordBearer configured (tokenUrl="/auth/login")
+- get_current_user dependency:
+  - Extracts token
+  - Verifies JWT
+  - Loads user from DB
+  - Logs authenticated user context
+- Protected endpoint:
+  - GET /auth/me
+- Swagger verification successful
+
+Role-Based Access Control (RBAC)
+- Roles supported:
+  - admin
+  - user
+- require_role(*roles) dependency implemented
+- Correct HTTP semantics:
+  - 401 unauthenticated
+  - 403 forbidden
+
+────────────────────────────────
+DOCUMENT INGESTION PIPELINE (PHASE 1 – COMPLETED)
+────────────────────────────────
+
+Document Model
+- id (UUID)
+- filename (original)
+- content_type
+- file_path
+- status (uploaded | processing | completed | failed)
+- error_message (nullable)
+- uploaded_by (FK → users.id)
+- created_at
+
+File Storage
+- Stored at:
+  storage/documents/{uuid}.{ext}
+- User filenames never trusted
+- Paths centralized in config
+
+Document APIs (RBAC-Protected)
+- POST /documents
+  - Saves file
+  - Creates DB record
+  - Enqueues ingestion job
+- GET /documents
+- GET /documents/{id}
+- DELETE /documents/{id}
+  - Admin-only
+  - Disk cleanup before DB delete
+
+────────────────────────────────
+BACKGROUND PROCESSING (CELERY + REDIS) (COMPLETED – PROD SAFE)
+────────────────────────────────
+
+- Celery worker configured
+- Redis used as broker + backend
+- FastAPI BackgroundTasks fully removed
+- Ingestion runs in worker process
+- Automatic retries with backoff
+- Failures persisted to DB
+- Worker-safe DB session handling
+- Scalable horizontally (multiple workers)
+
+Ingestion Lifecycle
+uploaded → processing → completed / failed
+
+────────────────────────────────
+PHASE 2: DOCUMENT INTELLIGENCE (COMPLETED)
+────────────────────────────────
+
+Document Parsing
+- Service-based parsing
+- Supported:
+  - TXT
+- Unsupported formats fail gracefully
+
+Text Chunking
+- Overlapping chunks
+- chunk_size = 500
+- overlap = 100
+
+DocumentChunk Model
+- id (UUID)
+- document_id (FK)
+- content
+- chunk_index
+- created_at
+
+────────────────────────────────
+PHASE 3: EMBEDDINGS & VECTOR DATABASE (COMPLETED)
+────────────────────────────────
+
+Embeddings
+- SentenceTransformers (all-MiniLM-L6-v2)
+- Dimension: 384
+- float32 NumPy vectors
+- Model loaded once per process
+
+FAISS
+- IndexFlatIP (cosine similarity)
+- Persisted on disk:
+  - index.faiss
+  - metadata.pkl
+
+Metadata
+- document_id (UUID string)
+- chunk_index (int)
+
+Stability Fixes
+- Fixed list → NumPy conversion bug
+- Failure propagation ensured
+
+────────────────────────────────
+PHASE 4: RETRIEVAL PIPELINE (COMPLETED)
+────────────────────────────────
+
+- /retrieval endpoint implemented
+- Query embedding generation
+- FAISS similarity search
+- Metadata → SQL chunk lookup
+- Strict access control enforced:
+  - admin: all docs
+  - user: own docs only
+- Ranked chunks returned with scores
+- Fully observable and secure
+
+────────────────────────────────
+PHASE 5: CHAT API (COMPLETED)
+────────────────────────────────
+
+- /chat endpoint implemented
+- Functional (non-class) architecture
+- Flow:
+  Query → Retrieval → Prompt → LLM → Answer
+- Deterministic prompt builder
+- Grounded answers only (context-enforced)
+- LLM abstraction layer (swappable)
+- Chat response includes:
+  - answer
+  - source chunks
+
+────────────────────────────────
+CURRENT POSITION
+────────────────────────────────
+
+- Backend is production-grade and observable
+- Ingestion pipeline is scalable and fault-tolerant
+- Secure RAG retrieval implemented
+- Chat API fully functional
+- No frontend dependency
+- Backend is stable, debuggable, and extensible
+
+────────────────────────────────
+REMAINING BACKEND WORK
+────────────────────────────────
+
+P0 – MUST BEFORE PROD
+- FAISS lifecycle management
+  - safe delete
+  - index rebuild
+  - consistency checks
+- Rate limiting (/chat, /documents)
+- Input guards (file size, query length)
+- Timeouts + retries for FAISS & LLM
+
+P1 – ENTERPRISE READY
+- Multi-tenancy (org_id isolation)
+- Audit logs (who did what, when)
+- Token & cost tracking
+- Index health endpoints
+
+P2 – QUALITY & OPS
+- RAG evaluation metrics
+- Prompt / model versioning
+- Admin diagnostics endpoints
+
+────────────────────────────────
+NEXT STEP (IMMEDIATE)
+────────────────────────────────
+
+STEP 3 – FAISS Lifecycle & Safe Delete
+- Prevent ghost vectors
+- Keep FAISS + DB consistent
+- Enable rebuild & health checks
+
+────────────────────────────────
+RESUME INSTRUCTIONS
+────────────────────────────────
+
+If context is lost, paste this document and say:
+
+“We have completed backend up to Chat API with Celery and observability.
+Proceed to Step 3 – FAISS lifecycle & safe delete.
+Continue step-by-step like a senior engineer onboarding a new joiner.”
