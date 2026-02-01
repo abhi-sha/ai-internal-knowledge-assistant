@@ -3,11 +3,12 @@ from datetime import datetime,timedelta,timezone
 from jose import jwt,JWTError
 from app.core.config import SECRET_KEY,ALGORITHM,ACCESS_TOKEN_EXPIRE_MINUTES
 from fastapi.security import OAuth2PasswordBearer
-from fastapi import Depends,HTTPException,status
+from fastapi import Depends,HTTPException,status,Request
 from sqlalchemy.orm import Session
 from app.db.session import get_db 
 from app.models.user import User
 from uuid import UUID
+from app.core.logger import get_logger
 
 pwd_context=CryptContext(schemes=["argon2"])
 
@@ -31,9 +32,12 @@ def create_access_token(data:dict,expire_delta:timedelta|None=None):
 
 
 def get_current_user(
+        request:Request,
         token:str=Depends(oauth2_scheme),
         db:Session=Depends(get_db)
 ):
+    
+
     credential_exception=HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials"
@@ -55,6 +59,15 @@ def get_current_user(
     if user is None:
         raise credential_exception
     
+
+    logger=get_logger(
+        request_id=request.state.request_id,
+        user_id=str(user.id),
+        role=user.role
+    )
+
+    logger.info("User authenticated")
+
     return user
 
 

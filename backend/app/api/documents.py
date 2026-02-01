@@ -18,66 +18,68 @@ from app.services.text_chunker import chunk_text
 from app.models.document_chunk import DocumentChunk
 from app.services.embedding_service import generate_embeddings
 from app.services.vector_store import FaissVectorStore
+from app.tasks.document_ingestion import ingest_document_task
+
 
 router=APIRouter(prefix="/documents",tags=["documents"])
 
 
-def process_document_background(document_id:UUID):
-    db:Session=SessionLocal()
+# def process_document_background(document_id:UUID):
+#     db:Session=SessionLocal()
 
-    try:
-        document=db.query(Document).filter(Document.id==document_id).first()
+#     try:
+#         document=db.query(Document).filter(Document.id==document_id).first()
 
-        if not document:
-            return
+#         if not document:
+#             return
 
-        # 1. mark processing
-        document.status="processing"
-        db.commit()
+#         # 1. mark processing
+#         document.status="processing"
+#         db.commit()
 
-        # 2.Extract text from doc 
-        extracted_text=parse_document(document.file_path)
+#         # 2.Extract text from doc 
+#         extracted_text=parse_document(document.file_path)
 
-        if not extracted_text.strip():
-            raise ValueError("Parsed document is empty")
+#         if not extracted_text.strip():
+#             raise ValueError("Parsed document is empty")
         
-        # 3. Chunk text
-        chunks=chunk_text(extracted_text)
+#         # 3. Chunk text
+#         chunks=chunk_text(extracted_text)
 
-        embeddings= generate_embeddings(chunks)
+#         embeddings= generate_embeddings(chunks)
 
-        if len(chunks)!=len(embeddings):
-            raise ValueError("Embedding generation failed")
+#         if len(chunks)!=len(embeddings):
+#             raise ValueError("Embedding generation failed")
         
-        for idx,chunk in enumerate(chunks):
-            db.add(
-                DocumentChunk(
-                    document_id=document.id,
-                    content=chunk,
-                    chunk_index=idx
-                )
-            )
-        db.commit()
-        # sleep(2)    #heavy task here
+#         for idx,chunk in enumerate(chunks):
+#             db.add(
+#                 DocumentChunk(
+#                     document_id=document.id,
+#                     content=chunk,
+#                     chunk_index=idx
+#                 )
+#             )
+#         db.commit()
+#         # sleep(2)    #heavy task here
 
-        # Store embeddings in FAISS
-        vector_store=FaissVectorStore()
-        metadata=[]
-        for i in range(len(chunks)):
-            metadata.append({"document_id": str(document.id),"chunk_index": i})
+#         # Store embeddings in FAISS
+#         vector_store=FaissVectorStore()
+#         metadata=[]
+#         for i in range(len(chunks)):
+#             metadata.append({"document_id": str(document.id),"chunk_index": i})
 
-        vector_store.add_vectors(embeddings,metadata)
+#         vector_store.add_vectors(embeddings,metadata)
         
-        # Mark Completed
-        document.status="completed"
-        db.commit()
-    except Exception as e:
-        print("Background processing error:", e)
-        document.status="failed"
-        document.error_message=str(e)
-        db.commit()
-    finally:
-        db.close()
+#         # Mark Completed
+#         document.status="completed"
+#         db.commit()
+#     except Exception as e:
+#         print("Background processing error:", e)
+#         document.status="failed"
+#         document.error_message=str(e)
+#         db.commit()
+#     finally:
+#         db.close()
 
 @router.post("",response_model=DocumentOut)
 def upload_document(
@@ -110,7 +112,8 @@ def upload_document(
     db.commit()
     db.refresh(doc)
 
-    background_tasks.add_task(process_document_background,doc.id)
+    ingest_document_task.delay(str(doc.id))
+    # background_tasks.add_task(process_document_background,doc.id)
     return doc
 
 @router.get("",response_model=list[DocumentOut])
@@ -145,6 +148,7 @@ def delete_document(
     user:User=Depends(require_role("admin")),
     db:Session=Depends(get_db),
 ):
+    
     doc=db.query(Document).filter(Document.id==document_id).first()
 
     if not doc:
