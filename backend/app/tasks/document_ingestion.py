@@ -64,7 +64,11 @@ def ingest_document_task(self,document_id:str):
         vector_store=FaissVectorStore()
         metadata=[]
         for i in range(len(chunks)):
-            metadata.append({"document_id": str(document.id),"chunk_index": i})
+            metadata.append(
+                {
+                    "document_id": str(document.id),
+                    "chunk_index": i
+                    })
 
         vector_store.add_vectors(embeddings,metadata)
         

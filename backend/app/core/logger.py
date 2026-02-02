@@ -1,5 +1,12 @@
 import logging
 
+class ContextLoggerAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        extra = kwargs.get("extra", {})
+        merged = {**extra, **self.extra}
+        kwargs["extra"] = merged
+        return msg, kwargs
+    
 
 def get_logger(request_id=None,user_id=None,role=None):
 
@@ -16,4 +23,4 @@ def get_logger(request_id=None,user_id=None,role=None):
     if role:
         extra["role"]=role
     
-    return logging.LoggerAdapter(logger,extra)
+    return ContextLoggerAdapter(logger,extra)

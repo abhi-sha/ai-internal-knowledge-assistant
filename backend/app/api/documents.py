@@ -19,7 +19,8 @@ from app.models.document_chunk import DocumentChunk
 from app.services.embedding_service import generate_embeddings
 from app.services.vector_store import FaissVectorStore
 from app.tasks.document_ingestion import ingest_document_task
-
+from fastapi import Request
+from app.core.logger import get_logger
 
 router=APIRouter(prefix="/documents",tags=["documents"])
 
@@ -145,6 +146,7 @@ def get_document(
 @router.delete("/{document_id}",status_code=204)
 def delete_document(
     document_id:UUID,
+    request:Request,
     user:User=Depends(require_role("admin")),
     db:Session=Depends(get_db),
 ):
@@ -154,18 +156,31 @@ def delete_document(
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Document not found")
     
+    vector_store=FaissVectorStore()
+    logger=get_logger(request_id=request.state.request_id)
+
     try:
+
+        vector_store.delete_document(str(document_id),request_id=request.state.request_id)
+
+
         file_path=Path(doc.file_path)
         if file_path.exists():
             file_path.unlink()
-    except Exception:
+
+        db.delete(doc)
+        db.commit()
+
+    except Exception as e:
+        db.rollback()
+        logger.exception("FAILED TO DELETE DOCUMENT",
+                         extra={"document_id":str(document_id)})
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete file from disk"
         )
         
-    db.delete(doc)
-    db.commit()
-
+   
     return {"status":"File deleted"}
     

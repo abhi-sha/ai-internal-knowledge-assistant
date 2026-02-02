@@ -3,6 +3,14 @@ import json
 import sys
 from datetime import datetime,timezone
 
+STANDARD_ATTRS = {
+    "name", "msg", "args", "levelname", "levelno",
+    "pathname", "filename", "module", "exc_info",
+    "exc_text", "stack_info", "lineno", "funcName",
+    "created", "msecs", "relativeCreated",
+    "thread", "threadName", "processName", "process",
+}
+
 
 class JsonFormatter(logging.Formatter):
     def format(self,record:logging.LogRecord)->str:
@@ -23,6 +31,10 @@ class JsonFormatter(logging.Formatter):
         if hasattr(record,"role"):
             log_record["role"]=record.role
         
+        for key, value in record.__dict__.items():
+            if key not in STANDARD_ATTRS and key not in log_record:
+                log_record[key] = value
+
         if record.exc_info:
             log_record["exception"]=self.formatException(record.exc_info)
 
