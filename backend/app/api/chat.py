@@ -6,12 +6,13 @@ from app.auth.security import get_current_user
 from app.models.user import User
 from app.schemas.chat import ChatRequest,ChatResponse
 from app.services.chat_service import chat
-
+from app.core.rate_limiter import limiter
 
 router= APIRouter(prefix="/chat",tags=["chat"])
 
 
 @router.post("",response_model=ChatResponse)
+@limiter.limit("10/minute")
 def chat_endpoint(
     request:Request,
     payload:ChatRequest,

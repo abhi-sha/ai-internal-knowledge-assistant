@@ -1,4 +1,4 @@
-from fastapi import APIRouter,Depends,UploadFile,File,HTTPException,status,BackgroundTasks
+from fastapi import APIRouter,Depends,UploadFile,File,HTTPException,status,BackgroundTasks,Request
 from sqlalchemy.orm import Session
 from pathlib import Path
 import shutil
@@ -21,6 +21,7 @@ from app.services.vector_store import FaissVectorStore
 from app.tasks.document_ingestion import ingest_document_task
 from fastapi import Request
 from app.core.logger import get_logger
+from app.core.rate_limiter import limiter
 
 router=APIRouter(prefix="/documents",tags=["documents"])
 
@@ -83,7 +84,9 @@ router=APIRouter(prefix="/documents",tags=["documents"])
 #         db.close()
 
 @router.post("",response_model=DocumentOut)
+@limiter.limit("10/minute")
 def upload_document(
+    request:Request,
     background_tasks:BackgroundTasks,
     file:UploadFile=File(...),
     user:User=Depends(require_role("admin","user")),
