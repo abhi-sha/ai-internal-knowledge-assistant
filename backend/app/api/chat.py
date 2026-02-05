@@ -7,6 +7,7 @@ from app.models.user import User
 from app.schemas.chat import ChatRequest,ChatResponse
 from app.services.chat_service import chat
 from app.core.rate_limiter import limiter
+from app.services.gaurds import validate_query
 
 router= APIRouter(prefix="/chat",tags=["chat"])
 
@@ -20,6 +21,7 @@ def chat_endpoint(
     user:User=Depends(get_current_user),
 
 ):
+    validate_query(payload.query)
     
     return chat(
         request=request,

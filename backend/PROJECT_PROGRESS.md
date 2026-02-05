@@ -1035,11 +1035,11 @@ P1 – ENTERPRISE READY
 - Audit logs (who did what, when)
 - Token & cost tracking
 - Index health endpoints
-
+<!-- 
 P2 – QUALITY & OPS
 - RAG evaluation metrics
 - Prompt / model versioning
-- Admin diagnostics endpoints
+- Admin diagnostics endpoints -->
 
 ────────────────────────────────
 NEXT STEP (IMMEDIATE)

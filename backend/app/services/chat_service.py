@@ -6,6 +6,7 @@ from app.services.prompt_builder import build_prompt
 from app.services.llm_service import generate_answer
 from app.core.logger import get_logger
 from fastapi import Request
+from app.services.gaurds import validate_context_size
 
 def chat(
         db:Session,
@@ -31,6 +32,8 @@ def chat(
         top_k=top_k,
         request=request
     )
+
+    chunks=validate_context_size(chunks)
 
     logger.info(
     "Chat request",

@@ -22,6 +22,7 @@ from app.tasks.document_ingestion import ingest_document_task
 from fastapi import Request
 from app.core.logger import get_logger
 from app.core.rate_limiter import limiter
+from app.services.gaurds import validate_file_size,validate_content_type
 
 router=APIRouter(prefix="/documents",tags=["documents"])
 
@@ -92,6 +93,11 @@ def upload_document(
     user:User=Depends(require_role("admin","user")),
     db:Session=Depends(get_db)
 ):  
+    
+
+    validate_file_size(file)
+    validate_content_type(file.content_type)
+
     file_id=uuid.uuid4()
     file_extension=Path(file.filename).suffix
     stored_filename=f"{file_id}{file_extension}"
