@@ -14,3 +14,4 @@ openai
 celery
 redis
 slowapi
+tenacity

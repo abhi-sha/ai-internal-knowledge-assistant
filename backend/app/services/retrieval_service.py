@@ -9,6 +9,7 @@ from app.models.user import User
 from app.schemas.retrieval import RetrievedChunk
 from uuid import UUID
 from app.core.logger import get_logger
+from app.services.faiss_safe import faiss_search_with_timeout
 
 def retrieve_chunks(
     *,
@@ -36,7 +37,10 @@ def retrieve_chunks(
 
     # 2. FAISS similarity search
     faiss=FaissVectorStore()
-    faiss_results = faiss.search(query_embedding, top_k)
+    # faiss_results = faiss.search(query_embedding, top_k)
+
+
+    faiss_results=faiss_search_with_timeout(faiss,query_embedding,top_k)
 
     results: List[RetrievedChunk] = []
 

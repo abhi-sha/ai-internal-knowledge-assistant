@@ -59,7 +59,7 @@ class FaissVectorStore:
         for rank, idx in enumerate(indices[0]):
             if idx == -1:
                 continue
-        results.append((self.metadata[idx], scores[0][rank]))
+            results.append((self.metadata[idx], scores[0][rank]))
         
         return results
     

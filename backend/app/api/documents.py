@@ -115,7 +115,7 @@ def upload_document(
     doc=Document(filename=file.filename,
                  content_type=file.content_type,
                  file_path=str(file_path),
-                 status="uploded",
+                 status="uploaded",
                  uploaded_by=user.id)
     
     db.add(doc)
