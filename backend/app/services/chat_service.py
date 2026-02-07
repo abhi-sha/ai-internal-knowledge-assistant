@@ -3,10 +3,13 @@ from app.models.user import User
 from app.schemas.chat import ChatResponse
 from app.services.retrieval_service import retrieve_chunks
 from app.services.prompt_builder import build_prompt
-from app.services.llm_service import generate_answer
+from app.services.llm_service import generate_answer_safe
 from app.core.logger import get_logger
 from fastapi import Request
 from app.services.gaurds import validate_context_size
+import time
+
+CHAT_MAX_LATENCY=20
 
 def chat(
         db:Session,
@@ -16,6 +19,8 @@ def chat(
         request:Request
 )->ChatResponse:
     
+    start=time.time()
+
     logger = get_logger(
         request_id=request.state.request_id,
         user_id=str(user.id),
@@ -50,10 +55,26 @@ def chat(
     )
 
     #3. generate answer
+    elapsed = time.time() - start
+    if elapsed>CHAT_MAX_LATENCY:
+        logger.warning("Chat timeout before LLM")
+        return ChatResponse(
+            query=query,
+            answer="The request took too long. Please try again.",
+            context_chunks=[]
+        )
+    
+    answer=generate_answer_safe(prompt)
 
-    answer=generate_answer(prompt)
-
-
+    total_latency = time.time() - start
+    # 5. Soft timeout AFTER LLM
+    if total_latency > CHAT_MAX_LATENCY:
+        logger.warning("Chat timeout after LLM", extra={"latency": total_latency})
+        return ChatResponse(
+            query=query,
+            answer="I found relevant information, but the response took too long to generate.",
+            context_chunks=chunks
+        )
 
     return ChatResponse(
         query=query,
